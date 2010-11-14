@@ -1,0 +1,52 @@
+package wrasse3
+
+import org.specs.Specification
+import org.specs.mock.Mockito
+
+/**
+ * Created by IntelliJ IDEA.
+ * User: przemek
+ * Date: 08.11.10
+ * Time: 23:14
+ * To change this template use File | Settings | File Templates.
+ */
+
+class GateActorSpec extends Specification with Mockito {
+
+  val service = mock[Service]
+  val gate = GateActor.create(service)
+
+  "gate actor should be transparent if no errors occur" in {
+    service.serve() returns OkResponse
+
+    val response = gate !? (1000, Request)
+
+    response must beSome(OkResponse)
+  }
+
+  "after 10 calls, service.serve must not be called" in {
+    service.serve() returns ErrorResponse
+
+    (1 to 11).foreach{
+      i => gate !? (1000, Request)
+    }
+
+    there was 10.times(service).serve()
+  }
+
+  "after configured timeout, actor forwards requests again" in {
+    service.serve() returns ErrorResponse
+
+    (1 to 11).foreach{
+      i => gate !? (1000, Request)
+    }
+
+    Thread.sleep(2000)
+
+    gate !? (1000, Request)
+
+    there was 11.times(service).serve()
+  }
+}
+
+
