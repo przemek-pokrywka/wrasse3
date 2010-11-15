@@ -6,12 +6,11 @@ import actors.{Actor, TIMEOUT}
 
 class GateActor(srv: Service, CLOSE_PERIOD: Int = 500) extends Actor {
 
-  var errors = 0
-  var end: Long = 0
 
   def act = loop{
 
     println("entering open state")
+    var errors = 0
 
     loopWhile(errors < 10) {
       react{
@@ -27,8 +26,7 @@ class GateActor(srv: Service, CLOSE_PERIOD: Int = 500) extends Actor {
     } andThen {
 
       println("entering closed state")
-      errors = 0
-      end = now + CLOSE_PERIOD
+      val end = now + CLOSE_PERIOD
 
       loopWhile(now < end) {
         reactWithin(end - now) {
