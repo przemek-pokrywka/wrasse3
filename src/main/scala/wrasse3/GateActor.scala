@@ -2,7 +2,7 @@ package wrasse3
 
 import scala.actors.Actor._
 import System.{currentTimeMillis => now}
-import actors.TIMEOUT
+import actors.{Actor, TIMEOUT}
 
 /**
  * Created by IntelliJ IDEA.
@@ -12,48 +12,45 @@ import actors.TIMEOUT
  * To change this template use File | Settings | File Templates.
  */
 
-object GateActor {
+class GateActor(srv: Service, CLOSE_PERIOD: Int = 500) extends Actor {
 
-  def create(srv: Service, CLOSE_PERIOD: Int = 500) = actor{
+  var subsequentErrors = 0
+  var end: Long = 0
 
-    var subsequentErrors = 0
-    var end: Long = 0
-    def tenErrorsARow = subsequentErrors >= 10
+  def tenErrorsARow = subsequentErrors >= 10
 
-    loop{
+  def act = loop{
 
-      println("entering open state")
+    println("entering open state")
 
-      loopWhile(!tenErrorsARow) {
-        react{
-          case _ => {
-            val r = srv.hit()
-            r match {
-              case ErrorResponse => subsequentErrors += 1
-              case _ => subsequentErrors = 0
-            }
-            reply(r)
+    loopWhile(!tenErrorsARow) {
+      react{
+        case _ => {
+          val r = srv.hit()
+          r match {
+            case ErrorResponse => subsequentErrors += 1
+            case _ => subsequentErrors = 0
           }
+          reply(r)
         }
-      } andThen {
-
-        println("entering closed state")
-        subsequentErrors = 0
-        end = now + CLOSE_PERIOD
-
-        loopWhile(now < end) {
-          reactWithin(end - now) {
-            case TIMEOUT => ()
-            case _ => {
-              println("gate is currently closed");
-              reply(ErrorResponse)
-            }
-          }
-        }
-
       }
-    }
+    } andThen {
 
+      println("entering closed state")
+      subsequentErrors = 0
+      end = now + CLOSE_PERIOD
+
+      loopWhile(now < end) {
+        reactWithin(end - now) {
+          case TIMEOUT => ()
+          case _ => {
+            println("gate is currently closed");
+            reply(ErrorResponse)
+          }
+        }
+      }
+
+    }
   }
 
 }
