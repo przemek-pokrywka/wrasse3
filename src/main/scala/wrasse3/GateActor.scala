@@ -24,7 +24,7 @@ object GateActor {
       println("entering open state")
       loopWhile(!tenErrorsARow) {
         react{
-          case Request => {
+          case _ => {
             val r = srv.serve()
             r match {
               case ErrorResponse => subsequentErrors += 1
@@ -32,7 +32,6 @@ object GateActor {
             }
             reply(r)
           }
-          case x => throw new IllegalArgumentException("what was it: " + x)
         }
       } andThen {
         subsequentErrors = 0
@@ -40,12 +39,11 @@ object GateActor {
         println("entering closed state")
         loopWhile(now < end) {
           reactWithin(end - now) {
-            case Request => {
+            case TIMEOUT => ()
+            case _ => {
               println("gate is currently closed");
               reply(ErrorResponse)
             }
-            case TIMEOUT => ()
-            case x => throw new IllegalArgumentException("what was it: " + x)
           }
         }
       }
