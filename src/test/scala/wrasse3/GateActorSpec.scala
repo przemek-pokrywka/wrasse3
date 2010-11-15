@@ -2,6 +2,7 @@ package wrasse3
 
 import org.specs.Specification
 import org.specs.mock.Mockito
+import actors.Actor
 
 /**
  * Created by IntelliJ IDEA.
@@ -16,36 +17,34 @@ class GateActorSpec extends Specification with Mockito {
   val service = mock[Service]
   val gate = GateActor.create(service)
 
-  "gate actor should be transparent if no errors occur" in {
-    service.serve() returns OkResponse
+  def hitService(): Option[Any] = gate !? (1000, Request)
 
-    val response = gate !? (1000, Request)
+  "gate actor should be transparent if no errors occur" in {
+    service.hit() returns OkResponse
+
+    val response = hitService()
 
     response must beSome(OkResponse)
   }
 
-  "after 10 calls, service.serve must not be called" in {
-    service.serve() returns ErrorResponse
+  "after 10 calls, service.hit must not be called" in {
+    service.hit() returns ErrorResponse
 
-    (1 to 11).foreach{
-      i => gate !? (1000, Request)
-    }
+    (1 to 11). foreach (_ => hitService())
 
-    there was 10.times(service).serve()
+    there was 10.times(service).hit()
   }
 
   "after configured timeout, actor forwards requests again" in {
-    service.serve() returns ErrorResponse
+    service.hit() returns ErrorResponse
 
-    (1 to 11).foreach{
-      i => gate !? (1000, Request)
-    }
+    (1 to 11).foreach (_ => hitService())
 
     Thread.sleep(2000)
 
-    gate !? (1000, Request)
+    hitService()
 
-    there was 11.times(service).serve()
+    there was 11.times(service).hit()
   }
 }
 

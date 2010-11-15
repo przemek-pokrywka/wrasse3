@@ -21,11 +21,13 @@ object GateActor {
     def tenErrorsARow = subsequentErrors >= 10
 
     loop{
+
       println("entering open state")
+
       loopWhile(!tenErrorsARow) {
         react{
           case _ => {
-            val r = srv.serve()
+            val r = srv.hit()
             r match {
               case ErrorResponse => subsequentErrors += 1
               case _ => subsequentErrors = 0
@@ -34,9 +36,11 @@ object GateActor {
           }
         }
       } andThen {
+
+        println("entering closed state")
         subsequentErrors = 0
         end = now + CLOSE_PERIOD
-        println("entering closed state")
+
         loopWhile(now < end) {
           reactWithin(end - now) {
             case TIMEOUT => ()
@@ -46,6 +50,7 @@ object GateActor {
             }
           }
         }
+
       }
     }
 

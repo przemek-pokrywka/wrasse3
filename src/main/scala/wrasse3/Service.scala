@@ -9,6 +9,6 @@ package wrasse3
  */
 
 trait Service {
-  def serve(): Response
+  def hit(): Response
 }
 
