@@ -18,6 +18,7 @@ class GateActorSpec extends Specification with Mockito {
   val gate = GateActor.create(service)
 
   def hitService(): Option[Any] = gate !? (1000, Request)
+  implicit def toRepeatingInt(n: Int) = new { def * (body: => Any) = { (1 to n).foreach( _ => body) } }
 
   "gate actor should be transparent if no errors occur" in {
     service.hit() returns OkResponse
@@ -30,7 +31,7 @@ class GateActorSpec extends Specification with Mockito {
   "after 10 calls, service.hit must not be called" in {
     service.hit() returns ErrorResponse
 
-    (1 to 11). foreach (_ => hitService())
+    11 * hitService()
 
     there was 10.times(service).hit()
   }
@@ -38,7 +39,7 @@ class GateActorSpec extends Specification with Mockito {
   "after configured timeout, actor forwards requests again" in {
     service.hit() returns ErrorResponse
 
-    (1 to 11).foreach (_ => hitService())
+    11 * hitService()
 
     Thread.sleep(2000)
 
