@@ -6,20 +6,20 @@ import actors.{Actor, TIMEOUT}
 
 class GateActor(srv: Service, CLOSE_PERIOD: Int = 500) extends Actor {
 
+  val maxErrors = 10
+  val errorResponse = ErrorResponse
+  private def sendRequest() = srv.hit()
 
   def act = loop{
 
     println("entering open state")
     var errors = 0
 
-    loopWhile(errors < 10) {
+    loopWhile(errors < maxErrors) {
       react{
         case _ => {
-          val r = srv.hit()
-          r match {
-            case ErrorResponse => errors += 1
-            case _ => errors = 0
-          }
+          val r = sendRequest()
+          if (r == errorResponse) errors += 1 else errors = 0
           reply(r)
         }
       }
@@ -33,7 +33,7 @@ class GateActor(srv: Service, CLOSE_PERIOD: Int = 500) extends Actor {
           case TIMEOUT => ()
           case _ => {
             println("gate is currently closed");
-            reply(ErrorResponse)
+            reply(errorResponse)
           }
         }
       }
