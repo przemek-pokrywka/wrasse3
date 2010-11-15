@@ -1,8 +1,8 @@
 package wrasse3
 
 import scala.actors.Actor._
+import System.{currentTimeMillis => now}
 import actors.TIMEOUT
-
 
 /**
  * Created by IntelliJ IDEA.
@@ -14,49 +14,42 @@ import actors.TIMEOUT
 
 object GateActor {
 
-  def create(srv: Service) = actor {
+  def create(srv: Service, CLOSE_PERIOD: Int = 500) = actor{
 
-    var subsequentErrors: Int = 0
-
+    var subsequentErrors = 0
+    var end: Long = 0
     def tenErrorsARow = subsequentErrors >= 10
 
-    val start = System.currentTimeMillis
-
-    loopWhile(!tenErrorsARow && System.currentTimeMillis - start < 3000) {
-      reactWithin(999) {
-        case Request => {
-          val response: Response = srv.serve()
-          if (response == ErrorResponse)
-            subsequentErrors += 1
-          else
-            subsequentErrors = 0
-          reply(response)
+    loop{
+      println("entering open state")
+      loopWhile(!tenErrorsARow) {
+        react{
+          case Request => {
+            val r = srv.serve()
+            r match {
+              case ErrorResponse => subsequentErrors += 1
+              case _ => subsequentErrors = 0
+            }
+            reply(r)
+          }
+          case x => throw new IllegalArgumentException("what was it: " + x)
         }
-        case TIMEOUT => ()
-        case x => throw new IllegalArgumentException("what was it: " + x)
+      } andThen {
+        subsequentErrors = 0
+        end = now + CLOSE_PERIOD
+        println("entering closed state")
+        loopWhile(now < end) {
+          reactWithin(end - now) {
+            case Request => {
+              println("gate is currently closed");
+              reply(ErrorResponse)
+            }
+            case TIMEOUT => ()
+            case x => throw new IllegalArgumentException("what was it: " + x)
+          }
+        }
       }
     }
-
-
-
-    /*
-
-
-       send to gsm
-        react {
-           case gsmResp => {
-             sendBackToCustomer
-           }
-        }
-
-
-
-
-
-
-
-     */
-
 
   }
 
