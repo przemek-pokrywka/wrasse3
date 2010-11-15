@@ -15,11 +15,11 @@ import actors.Actor
 class GateActorSpec extends Specification with Mockito {
 
   val service = mock[Service]
-  val gate = new GateActor(service)
+  val gate = new GateActor(service.hit(), ErrorResponse, 10, 500)
 
   gate.start()
 
-  def hitService(): Option[Any] = gate !? (1000, Request)
+  def hitService(): Option[Any] = gate !? (100, Request)
   implicit def toRepeatingInt(n: Int) = new { def * (body: => Any) = { (1 to n).foreach( _ => body) } }
 
   "gate actor should be transparent if no errors occur" in {
@@ -43,7 +43,7 @@ class GateActorSpec extends Specification with Mockito {
 
     10 * hitService()
 
-    Thread.sleep(2000)
+    Thread.sleep(600)
 
     hitService()
 

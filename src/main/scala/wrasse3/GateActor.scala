@@ -4,11 +4,10 @@ import scala.actors.Actor._
 import System.{currentTimeMillis => now}
 import actors.{Actor, TIMEOUT}
 
-class GateActor(srv: Service, CLOSE_PERIOD: Int = 500) extends Actor {
-
-  val maxErrors = 10
-  val errorResponse = ErrorResponse
-  private def sendRequest() = srv.hit()
+class GateActor[R](sendRequest: => R,
+                   errorResponse: R,
+                   maxErrors: Int,
+                   closePeriod: Int) extends Actor {
 
   def act = loop{
 
@@ -18,7 +17,7 @@ class GateActor(srv: Service, CLOSE_PERIOD: Int = 500) extends Actor {
     loopWhile(errors < maxErrors) {
       react{
         case _ => {
-          val r = sendRequest()
+          val r = sendRequest
           if (r == errorResponse) errors += 1 else errors = 0
           reply(r)
         }
@@ -26,7 +25,7 @@ class GateActor(srv: Service, CLOSE_PERIOD: Int = 500) extends Actor {
     } andThen {
 
       println("entering closed state")
-      val end = now + CLOSE_PERIOD
+      val end = now + closePeriod
 
       loopWhile(now < end) {
         reactWithin(end - now) {
