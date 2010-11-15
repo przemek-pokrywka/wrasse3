@@ -11,6 +11,8 @@ class GateActor[R](sendRequest: => R,
 
   def info(m: String) = println(this + " " + m)
 
+  def stop() = try { exit() } catch { case _ => () }
+
   def act = loop{
 
     info("entering open state")

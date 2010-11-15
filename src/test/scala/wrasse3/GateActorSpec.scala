@@ -12,40 +12,44 @@ class GateActorSpec extends Specification with Mockito {
     maxErrors = 10,
     closePeriod = 500)
 
-  gate.start()
-
   def hitService(): Option[Any] = gate !? (100, Request)
 
   implicit def toRepeatingInt(n: Int) = new {
     def *(body: => Any) = (1 to n).foreach(_ => body)
   }
 
-  "gate actor should be transparent if no errors occur" in {
-    service.hit() returns OkResponse
+  "gate actor" should {
 
-    val response = hitService()
+    doBefore(gate.start())
+    doAfter(gate.stop())
 
-    response must beSome(OkResponse)
-  }
+    "be transparent if no errors occur" in {
+      service.hit() returns OkResponse
 
-  "after 10 calls, service.hit must not be called" in {
-    service.hit() returns ErrorResponse
+      val response = hitService()
 
-    10 * hitService() // that should close the gate
-    hitService() // should not be counted, as gate is closed now
+      response must beSome(OkResponse)
+    }
 
-    there was 10.times(service).hit()
-  }
+    "not call service.hit after 10 calls" in {
+      service.hit() returns ErrorResponse
 
-  "after configured timeout, actor forwards requests again" in {
-    service.hit() returns ErrorResponse
+      10 * hitService() // that should close the gate
+      hitService() // should not be counted, as gate is closed now
 
-    10 * hitService() // that should close the gate
+      there was 10.times(service).hit()
+    }
 
-    Thread.sleep(600) // let's wait until gate is open again
+    "forward requests again after configured timeout" in {
+      service.hit() returns ErrorResponse
 
-    hitService() // now gate should be open, so hit should be counted
+      10 * hitService() // that should close the gate
 
-    there was 11.times(service).hit()
+      Thread.sleep(600) // let's wait until gate is open again
+
+      hitService() // now gate should be open, so hit should be counted
+
+      there was 11.times(service).hit()
+    }
   }
 }
