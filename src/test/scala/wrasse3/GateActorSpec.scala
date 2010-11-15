@@ -2,25 +2,23 @@ package wrasse3
 
 import org.specs.Specification
 import org.specs.mock.Mockito
-import actors.Actor
-
-/**
- * Created by IntelliJ IDEA.
- * User: przemek
- * Date: 08.11.10
- * Time: 23:14
- * To change this template use File | Settings | File Templates.
- */
 
 class GateActorSpec extends Specification with Mockito {
 
   val service = mock[Service]
-  val gate = new GateActor(service.hit(), ErrorResponse, 10, 500)
+  val gate = new GateActor(
+    sendRequest = service.hit(),
+    errorResponse = ErrorResponse,
+    maxErrors = 10,
+    closePeriod = 500)
 
   gate.start()
 
   def hitService(): Option[Any] = gate !? (100, Request)
-  implicit def toRepeatingInt(n: Int) = new { def * (body: => Any) = { (1 to n).foreach( _ => body) } }
+
+  implicit def toRepeatingInt(n: Int) = new {
+    def *(body: => Any) = (1 to n).foreach(_ => body)
+  }
 
   "gate actor should be transparent if no errors occur" in {
     service.hit() returns OkResponse
@@ -33,7 +31,8 @@ class GateActorSpec extends Specification with Mockito {
   "after 10 calls, service.hit must not be called" in {
     service.hit() returns ErrorResponse
 
-    11 * hitService()
+    10 * hitService() // that should close the gate
+    hitService() // should not be counted, as gate is closed now
 
     there was 10.times(service).hit()
   }
@@ -41,14 +40,12 @@ class GateActorSpec extends Specification with Mockito {
   "after configured timeout, actor forwards requests again" in {
     service.hit() returns ErrorResponse
 
-    10 * hitService()
+    10 * hitService() // that should close the gate
 
-    Thread.sleep(600)
+    Thread.sleep(600) // let's wait until gate is open again
 
-    hitService()
+    hitService() // now gate should be open, so hit should be counted
 
     there was 11.times(service).hit()
   }
 }
-
-
