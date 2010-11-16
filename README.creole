@@ -1,5 +1,5 @@
 Gate component modelled as an actor.
 
 The essence of this exercise is captured in
-[[blob/master/src/test/scala/wrasse3/GateActorSpec.scala|the spec]]
-and [[blob/master/src/main/scala/wrasse3/GateActor.scala|the code]]
+[[wrasse3/blob/master/src/test/scala/wrasse3/GateActorSpec.scala|the spec]]
+and [[wrasse3/blob/master/src/main/scala/wrasse3/GateActor.scala|the code]]
