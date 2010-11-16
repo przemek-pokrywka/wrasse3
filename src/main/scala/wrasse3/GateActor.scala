@@ -13,7 +13,7 @@ class GateActor[R](sendRequest: => R,
 
   def stop() = try { exit() } catch { case _ => () }
 
-  def act = loop{
+  def beOpenUntilCrash {
 
     info("entering open state")
     var errors = 0
@@ -26,22 +26,28 @@ class GateActor[R](sendRequest: => R,
           reply(r)
         }
       }
-    } andThen {
+    }
+  }
 
-      info("entering closed state")
-      val end = now + closePeriod
+  def closeGateForSomeTime {
 
-      loopWhile(now < end) {
-        reactWithin(end - now) {
-          case TIMEOUT => ()
-          case _ => {
-            info("gate is currently closed");
-            reply(errorResponse)
-          }
+    info("entering closed state")
+    val end = now + closePeriod
+
+    loopWhile(now < end) {
+      reactWithin(end - now) {
+        case TIMEOUT => ()
+        case _ => {
+          info("gate is currently closed");
+          reply(errorResponse)
         }
       }
-
     }
+  }
+
+
+  def act = loop {
+    beOpenUntilCrash andThen closeGateForSomeTime
   }
 
 }
