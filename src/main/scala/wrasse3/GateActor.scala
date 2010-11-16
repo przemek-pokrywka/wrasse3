@@ -9,9 +9,9 @@ class GateActor[R](sendRequest: => R,
                    maxErrors: Int,
                    closePeriod: Int) extends Actor {
 
-  def info(m: String) = println(this + " " + m)
-
-  def stop() = try { exit() } catch { case _ => () }
+  def act = loop {
+    beOpenUntilCrash andThen closeGateForSomeTime
+  }
 
   def beOpenUntilCrash {
 
@@ -45,9 +45,8 @@ class GateActor[R](sendRequest: => R,
     }
   }
 
+  private def info(m: String) = println(this + " " + m)
 
-  def act = loop {
-    beOpenUntilCrash andThen closeGateForSomeTime
-  }
+  private[wrasse3] def stop() = try { exit() } catch { case _ => () }
 
 }
